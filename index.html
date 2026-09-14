@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Presa — piano allenamento</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#15171a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Presa">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --steel-900:#15171a;
+    --steel-800:#1e2124;
+    --steel-700:#2a2e33;
+    --steel-600:#3a3f45;
+    --dial-line:#4a5058;
+    --paper:#eeece4;
+    --paper-dim:#a8a79f;
+    --ok:#7fae83;
+    --hold:#d9622b;
+    --restrep:#4f8fd1;
+    --eccentric:#9b6bd1;
+    --handswitch:#8d97a5;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{ background:var(--steel-900); color:var(--paper); font-family:'IBM Plex Sans', sans-serif; min-height:100vh; display:flex; justify-content:center; }
+  #app{ width:100%; max-width:480px; min-height:100vh; background:var(--steel-800); display:flex; flex-direction:column; position:relative; }
+  header{ padding:22px 20px 16px; display:flex; align-items:baseline; justify-content:space-between; border-bottom:1px solid var(--steel-600); }
+  header h1{ font-family:'Space Grotesk', sans-serif; font-size:20px; font-weight:600; margin:0; letter-spacing:0.2px; }
+  header .unit{ color:var(--hold); font-weight:400; font-size:13px; }
+  header .streak{ font-size:13px; color:var(--paper-dim); font-variant-numeric:tabular-nums; }
+
+  main{ flex:1; padding:20px; display:flex; flex-direction:column; gap:18px; }
+
+  .gauge-wrap{ display:flex; justify-content:center; padding:14px 0 4px; }
+  .gauge{ width:220px; height:220px; }
+  .gauge-bg{ fill:none; stroke:var(--steel-700); stroke-width:14; }
+  .gauge-fill{ fill:none; stroke:var(--hold); stroke-width:14; stroke-linecap:round; transition:stroke-dashoffset .4s ease; }
+  .gauge-center{ font-family:'Space Grotesk', sans-serif; }
+  .gauge-num{ font-size:44px; font-weight:700; fill:var(--paper); }
+  .gauge-label{ font-size:12px; fill:var(--paper-dim); letter-spacing:0.5px; }
+
+  .hint{ font-size:12.5px; color:var(--paper-dim); text-align:center; margin-top:-8px; }
+
+  .rest-banner{ background:rgba(217,98,43,0.14); border:1px solid var(--hold); color:var(--paper); border-radius:10px; padding:12px 14px; font-size:13.5px; line-height:1.4; }
+  .rest-banner strong{ color:var(--hold); }
+
+  .session-list{ display:flex; flex-direction:column; gap:10px; }
+  .session-row{ background:var(--steel-700); border:1px solid var(--steel-600); border-radius:10px; padding:14px 16px; }
+  .session-row.done{ display:flex; align-items:center; gap:14px; opacity:0.55; }
+  .session-row:not(.done){ display:flex; flex-direction:column; gap:10px; }
+  .session-dot{ width:12px; height:12px; border-radius:50%; background:var(--ok); border:2px solid var(--ok); flex-shrink:0; }
+  .session-row .info{ flex:1; }
+  .session-row .t{ font-weight:600; font-size:14.5px; }
+  .session-row .info .s{ font-size:12.5px; color:var(--paper-dim); margin-top:2px; }
+  .session-row .go{ font-size:15px; color:var(--ok); }
+  .row-actions{ display:flex; gap:8px; }
+  .mini-btn{ flex:1; padding:11px; border-radius:8px; border:none; font-size:13px; font-weight:700; font-family:'IBM Plex Sans',sans-serif; cursor:pointer; }
+  .mini-btn.type-toroide{ background:var(--hold); color:#1a1a1a; }
+  .mini-btn.type-elastico{ background:var(--restrep); color:#0c1622; }
+
+  .history{ display:flex; gap:6px; justify-content:space-between; padding-top:4px; }
+  .hist-day{ flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .hist-bar{ width:100%; height:34px; border-radius:6px; background:var(--steel-700); display:flex; flex-direction:column-reverse; overflow:hidden; }
+  .hist-fill{ background:var(--ok); width:100%; }
+  .hist-lbl{ font-size:10px; color:var(--paper-dim); }
+
+  section.card{ background:var(--steel-700); border:1px solid var(--steel-600); border-radius:12px; padding:16px; }
+  .card h2{ font-family:'Space Grotesk',sans-serif; font-size:15px; margin:0 0 10px; }
+  .plan-block{ margin-bottom:12px; }
+  .plan-block:last-child{ margin-bottom:0; }
+  .plan-block .pt{ font-weight:600; font-size:13.5px; margin-bottom:3px; }
+  .plan-block .pd{ font-size:12.5px; color:var(--paper-dim); line-height:1.55; }
+
+  #sessionScreen{ display:none; flex-direction:column; flex:1; }
+  .sess-header{ display:flex; align-items:center; gap:12px; padding:18px 20px; border-bottom:1px solid var(--steel-600); }
+  .back-btn{ background:none; border:none; color:var(--paper); font-size:22px; cursor:pointer; padding:2px 6px; line-height:1; }
+  .sess-header .ttl{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:15px; }
+  .sess-header .sub{ font-size:12px; color:var(--paper-dim); }
+
+  .work-body{ flex:1; display:flex; flex-direction:column; align-items:center; padding:20px; gap:14px; }
+
+  .exercise-box{ text-align:center; }
+  .exercise-box .ex-name{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; margin-bottom:6px; }
+  .exercise-box .ex-desc{ font-size:13px; color:var(--paper-dim); line-height:1.55; max-width:340px; margin:0 auto; }
+  .exercise-box .ex-count{ font-size:12.5px; color:var(--paper-dim); margin-top:8px; font-variant-numeric:tabular-nums; }
+
+  .hand-switch{ display:flex; border:1.5px solid var(--dial-line); border-radius:20px; overflow:hidden; }
+  .hand-switch .seg{ padding:7px 20px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13px; letter-spacing:0.5px; color:var(--paper-dim); transition:all .25s ease; }
+  .hand-switch .seg.active{ background:var(--paper); color:var(--steel-900); }
+
+  .phase-tag{ font-size:13px; font-weight:600; letter-spacing:0.4px; padding:6px 16px; border-radius:20px; border:1.5px solid var(--dial-line); color:var(--paper-dim); transition:all .3s ease; }
+  .phase-tag.p-hold{ border-color:var(--hold); color:var(--hold); background:rgba(217,98,43,0.1); }
+  .phase-tag.p-restRep{ border-color:var(--restrep); color:var(--restrep); background:rgba(79,143,209,0.1); }
+  .phase-tag.p-eccentric{ border-color:var(--eccentric); color:var(--eccentric); background:rgba(155,107,209,0.12); }
+  .phase-tag.p-handSwitch{ border-color:var(--handswitch); color:var(--handswitch); background:rgba(141,151,165,0.14); }
+
+  .ring-wrap{ position:relative; width:220px; height:220px; border-radius:50%; transition:box-shadow .4s ease; }
+  .ring-wrap.p-hold{ box-shadow:0 0 40px -6px rgba(217,98,43,0.45); }
+  .ring-wrap.p-restRep{ box-shadow:0 0 40px -6px rgba(79,143,209,0.4); }
+  .ring-wrap.p-eccentric{ box-shadow:0 0 40px -6px rgba(155,107,209,0.45); }
+  .ring-wrap.p-handSwitch{ box-shadow:0 0 40px -6px rgba(141,151,165,0.4); }
+  .ring-num{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-size:54px; font-weight:700; font-variant-numeric:tabular-nums; transition:color .3s ease; }
+  .ring-num.p-hold{ color:var(--hold); }
+  .ring-num.p-restRep{ color:var(--restrep); }
+  .ring-num.p-eccentric{ color:var(--eccentric); }
+  .ring-num.p-handSwitch{ color:var(--handswitch); }
+
+  .set-progress{ display:flex; gap:7px; max-width:280px; flex-wrap:wrap; justify-content:center; }
+  .set-pip{ width:9px; height:9px; border-radius:50%; background:var(--steel-600); }
+  .set-pip.done{ background:var(--ok); }
+  .set-pip.now{ background:var(--hold); }
+
+  .paused-banner{ font-size:12px; font-weight:700; letter-spacing:1px; color:var(--paper); background:var(--steel-600); padding:7px 16px; border-radius:20px; }
+
+  .controls{ display:flex; gap:10px; width:100%; padding-top:2px; }
+  .btn{ flex:1; padding:14px; border-radius:10px; border:none; font-size:14px; font-weight:600; font-family:'IBM Plex Sans',sans-serif; cursor:pointer; }
+  .btn-primary{ background:var(--hold); color:#1a1a1a; }
+  .btn-ghost{ background:var(--steel-600); color:var(--paper); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+
+  .done-screen{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:30px; text-align:center; }
+  .done-screen .big{ font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700; }
+  .done-screen p{ color:var(--paper-dim); font-size:13.5px; max-width:280px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div><h1>Presa <span class="unit">toroide + elastico</span></h1></div>
+    <div class="streak" id="streakLabel">—</div>
+  </header>
+
+  <main id="homeScreen">
+
+    <div class="gauge-wrap">
+      <svg class="gauge" viewBox="0 0 220 220">
+        <circle class="gauge-bg" cx="110" cy="110" r="92" />
+        <circle class="gauge-fill" id="gaugeFill" cx="110" cy="110" r="92"
+          stroke-dasharray="578" stroke-dashoffset="578" transform="rotate(-90 110 110)" />
+        <g class="gauge-center">
+          <text x="110" y="106" text-anchor="middle" class="gauge-num" id="gaugeNum">0/3</text>
+          <text x="110" y="130" text-anchor="middle" class="gauge-label">SESSIONI OGGI</text>
+        </g>
+      </svg>
+    </div>
+    <div class="hint" id="topHint"></div>
+
+    <div class="rest-banner" id="restBanner" style="display:none;"></div>
+
+    <div class="session-list" id="sessionList"></div>
+
+    <section class="card">
+      <h2>Ultimi 7 giorni</h2>
+      <div class="history" id="historyRow"></div>
+    </section>
+
+    <section class="card">
+      <h2>Toroide</h2>
+      <div class="plan-block">
+        <div class="pt">Presa piena a schiacciare</div>
+        <div class="pd">2 serie (destra poi sinistra) × 6 ripetizioni, tenuta 4s. Una delle due serie, a giorni alterni, ha il rilascio lento (eccentrica) invece che di scatto — lo vedi indicato durante la sessione.</div>
+      </div>
+      <div class="plan-block">
+        <div class="pt">Isometria submassimale</div>
+        <div class="pd">2 serie (destra poi sinistra) × 5 ripetizioni, tenuta 12s al 60-70% dello sforzo massimo.</div>
+      </div>
+      <div class="plan-block">
+        <div class="pd">Tra le serie e tra i due esercizi non c'è pausa vera: solo 10s per cambiare mano (e esercizio, quando capita).</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Elastico estensori</h2>
+      <div class="plan-block">
+        <div class="pd">2 serie (destra poi sinistra) × 15 aperture. Apri le dita contro l'elastico e torna in modo controllato. Lavora gli antagonisti dei flessori, utile contro gli squilibri da troppo lavoro di presa. Meglio non più di 2-3 volte a settimana, anche se qui è selezionabile per ogni sessione.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="sessionScreen">
+    <div class="sess-header">
+      <button class="back-btn" id="backBtn">←</button>
+      <div>
+        <div class="ttl" id="sessTitle">Sessione</div>
+        <div class="sub" id="sessSub"></div>
+      </div>
+    </div>
+    <div class="work-body" id="workBody"></div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+  const EX_A = { key:'A', name:'Presa piena a schiacciare',
+    desc:"Impugna il toroide con tutta la mano, pollice compreso. Schiaccia al massimo per tutta la tenuta.",
+    sets:2, reps:6, hold:4, restRep:10, holdLabel:'SCHIACCIA' };
+  const EX_B = { key:'B', name:'Isometria submassimale',
+    desc:'Stessa presa, ma al 60-70% dello sforzo massimo: una tenuta sostenibile, non uno schiacciamento esplosivo.',
+    sets:2, reps:5, hold:12, restRep:15, holdLabel:'TIENI (60-70%)' };
+  const EX_C = { key:'C', name:'Estensione dita con elastico',
+    desc:"Fascia l'elastico intorno alle dita di una mano, apri contro la resistenza, poi torna in modo controllato.",
+    sets:2, reps:15, hold:2, restRep:3, holdLabel:'APRI', restRepLabel:'TORNA' };
+
+  const ROUTINES = { toroide:[EX_A, EX_B], elastico:[EX_C] };
+  const ROUTINE_NAME = { toroide:'Toroide', elastico:'Elastico' };
+
+  const SESSION_LABELS = ['Sessione 1 — mattina', 'Sessione 2 — pausa pranzo', 'Sessione 3 — pomeriggio'];
+  const STORAGE_KEY = 'grip-training-log';
+  const PHASE_CLASS = { hold:'p-hold', restRep:'p-restRep', eccentric:'p-eccentric', handSwitch:'p-handSwitch' };
+  const PHASE_COLOR_VAR = { hold:'var(--hold)', restRep:'var(--restrep)', eccentric:'var(--eccentric)', handSwitch:'var(--handswitch)' };
+
+  let log = {};
+  let activeSessionIdx = null;
+  let isPaused = false;
+  let timer = { interval:null, phase:null, secondsLeft:0, exIdx:0, setIdx:0, repIdx:0, planArr:null, routineType:null, crossesExercise:false };
+
+  function todayKey(d){ d = d || new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function dayLabel(d){ return ['D','L','M','M','G','V','S'][d.getDay()]; }
+  function dayOfYear(d){ const start = new Date(d.getFullYear(),0,0); return Math.floor((d - start)/86400000); }
+  function handForSet(setIdx){ return setIdx % 2 === 0 ? 'DX' : 'SX'; }
+  function isEccentricSet(ex, setIdx){
+    if(ex.key !== 'A') return false;
+    return setIdx === (dayOfYear(new Date()) % 2);
+  }
+
+  async function loadLog(){
+    try{ const raw = localStorage.getItem(STORAGE_KEY); log = raw ? JSON.parse(raw) : {}; }
+    catch(e){ log = {}; }
+  }
+  async function saveLog(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(log)); }
+    catch(e){ console.error('storage error', e); }
+  }
+  function getToday(){ const k = todayKey(); if(!log[k]) log[k] = [null,null,null]; return log[k]; }
+
+  function consecutivePriorDays(){
+    let consecutive = 0; let d = new Date(); d.setDate(d.getDate()-1);
+    while(true){
+      const arr = log[todayKey(d)];
+      if(arr && arr.some(Boolean)){ consecutive++; d.setDate(d.getDate()-1); } else break;
+    }
+    return consecutive;
+  }
+
+  function renderHome(){
+    const today = getToday();
+    const done = today.filter(Boolean).length;
+
+    document.getElementById('gaugeNum').textContent = done + '/3';
+    const circumference = 578;
+    document.getElementById('gaugeFill').style.strokeDashoffset = circumference - (circumference*(done/3));
+
+    const consecutive = consecutivePriorDays();
+    document.getElementById('streakLabel').textContent = consecutive + ' gg consecutivi';
+
+    document.getElementById('topHint').textContent = done >= 3
+      ? 'Tutte le sessioni di oggi sono fatte.'
+      : "Tocca un allenamento per una qualsiasi sessione della giornata.";
+
+    const banner = document.getElementById('restBanner');
+    if(consecutive >= 3 && done === 0){
+      banner.style.display = 'block';
+      banner.innerHTML = '<strong>Valuta un riposo.</strong> Hai allenato ' + consecutive + ' giorni di fila. Un giorno senza toroide oggi va bene.';
+    } else { banner.style.display = 'none'; }
+
+    const list = document.getElementById('sessionList');
+    list.innerHTML = '';
+    SESSION_LABELS.forEach((label, i)=>{
+      const isDone = !!today[i];
+      const row = document.createElement('div');
+      if(isDone){
+        row.className = 'session-row done';
+        row.innerHTML = `
+          <div class="session-dot"></div>
+          <div class="info">
+            <div class="t">${label}</div>
+            <div class="s">Completata · ${ROUTINE_NAME[today[i]] || today[i]}</div>
+          </div>
+          <div class="go">✓</div>`;
+      } else {
+        row.className = 'session-row';
+        row.innerHTML = `
+          <div class="t">${label}</div>
+          <div class="row-actions">
+            <button class="mini-btn type-toroide" data-slot="${i}" data-type="toroide">Toroide</button>
+            <button class="mini-btn type-elastico" data-slot="${i}" data-type="elastico">Elastico</button>
+          </div>`;
+      }
+      list.appendChild(row);
+    });
+    list.querySelectorAll('.mini-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> startSession(parseInt(btn.dataset.slot,10), btn.dataset.type));
+    });
+
+    const histRow = document.getElementById('historyRow');
+    histRow.innerHTML = '';
+    for(let i=6;i>=0;i--){
+      const d = new Date(); d.setDate(d.getDate()-i);
+      const arr = log[todayKey(d)] || [null,null,null];
+      const pct = Math.round((arr.filter(Boolean).length/3)*100);
+      const col = document.createElement('div');
+      col.className = 'hist-day';
+      col.innerHTML = `<div class="hist-bar"><div class="hist-fill" style="height:${pct}%"></div></div><div class="hist-lbl">${dayLabel(d)}</div>`;
+      histRow.appendChild(col);
+    }
+  }
+
+  function currentExercise(){ return timer.planArr[timer.exIdx]; }
+
+  function startSession(slotIdx, type){
+    activeSessionIdx = slotIdx;
+    timer.routineType = type;
+    timer.planArr = ROUTINES[type];
+    timer.exIdx = 0; timer.setIdx = 0; timer.repIdx = 0; timer.crossesExercise = false;
+    document.getElementById('homeScreen').style.display = 'none';
+    document.getElementById('sessionScreen').style.display = 'flex';
+    document.getElementById('sessTitle').textContent = SESSION_LABELS[slotIdx];
+    beginRep('hold');
+  }
+
+  function phaseDuration(phase){
+    const ex = currentExercise();
+    if(phase==='hold') return ex.hold;
+    if(phase==='restRep') return ex.restRep;
+    if(phase==='eccentric') return 3;
+    if(phase==='handSwitch') return 10;
+  }
+
+  function beginRep(phase){
+    isPaused = false;
+    clearInterval(timer.interval);
+    timer.phase = phase;
+    timer.secondsLeft = phaseDuration(phase);
+    buildWorkScreen();
+    startRingAnimation(timer.secondsLeft);
+    timer.interval = setInterval(tick, 1000);
+  }
+
+  function tick(){
+    timer.secondsLeft--;
+    if(timer.secondsLeft <= 0){ advancePhase(); }
+    else { const n = document.getElementById('ringNum'); if(n) n.textContent = timer.secondsLeft; }
+  }
+
+  function advancePhase(){
+    if(timer.phase === 'hold'){ afterHold(); return; }
+    if(timer.phase === 'eccentric'){ afterEccentricOrHold(); return; }
+    if(timer.phase === 'restRep'){ beginRep('hold'); return; }
+    if(timer.phase === 'handSwitch'){
+      if(timer.crossesExercise){ timer.exIdx++; timer.setIdx = 0; timer.repIdx = 0; }
+      else { timer.setIdx++; timer.repIdx = 0; }
+      beginRep('hold');
+      return;
+    }
+  }
+
+  function afterHold(){
+    const ex = currentExercise();
+    if(isEccentricSet(ex, timer.setIdx)){ beginRep('eccentric'); }
+    else { afterEccentricOrHold(); }
+  }
+
+  function afterEccentricOrHold(){
+    const ex = currentExercise();
+    if(timer.repIdx < ex.reps - 1){ timer.repIdx++; beginRep('restRep'); return; }
+    const isLastSetOfExercise = timer.setIdx >= ex.sets - 1;
+    const isLastExercise = timer.exIdx >= timer.planArr.length - 1;
+    if(isLastSetOfExercise && isLastExercise){ finishSession(); return; }
+    timer.crossesExercise = isLastSetOfExercise;
+    beginRep('handSwitch');
+  }
+
+  async function finishSession(){
+    clearInterval(timer.interval);
+    const today = getToday();
+    today[activeSessionIdx] = timer.routineType;
+    await saveLog();
+    renderDoneScreen();
+  }
+
+  function renderDoneScreen(){
+    document.getElementById('sessSub').textContent = '';
+    const today = getToday();
+    const remaining = today.filter(v=>!v).length;
+    document.getElementById('workBody').innerHTML = `
+      <div class="done-screen">
+        <div class="big">Sessione completata</div>
+        <p>${ROUTINE_NAME[timer.routineType]} fatto. ${remaining > 0 ? remaining + " sessione/i ancora da fare oggi. Lascia passare almeno un'ora prima della prossima." : 'Tutte le sessioni di oggi sono fatte. Buon recupero.'}</p>
+        <button class="btn btn-primary" id="doneHomeBtn" style="max-width:200px;">Torna alla home</button>
+      </div>`;
+    document.getElementById('doneHomeBtn').addEventListener('click', goHome);
+  }
+
+  function buildWorkScreen(){
+    const pc = PHASE_CLASS[timer.phase];
+    let displayEx, displayHand, countText, phaseLabelText;
+
+    if(timer.phase === 'handSwitch'){
+      let nextExIdx, nextSetIdx;
+      if(timer.crossesExercise){ nextExIdx = timer.exIdx + 1; nextSetIdx = 0; }
+      else { nextExIdx = timer.exIdx; nextSetIdx = timer.setIdx + 1; }
+      displayEx = timer.planArr[nextExIdx];
+      displayHand = handForSet(nextSetIdx);
+      countText = 'Prossimo: Serie ' + (nextSetIdx+1) + '/' + displayEx.sets;
+      phaseLabelText = timer.crossesExercise ? 'CAMBIO MANO E ESERCIZIO' : 'CAMBIO MANO';
+    } else {
+      displayEx = currentExercise();
+      displayHand = handForSet(timer.setIdx);
+      countText = 'Serie ' + (timer.setIdx+1) + '/' + displayEx.sets + ' · Ripetizione ' + (timer.repIdx+1) + '/' + displayEx.reps;
+      if(timer.phase === 'hold') phaseLabelText = displayEx.holdLabel || 'SCHIACCIA';
+      else if(timer.phase === 'eccentric') phaseLabelText = 'RILASCIA LENTO (eccentrica)';
+      else phaseLabelText = displayEx.restRepLabel || 'RILASCIA';
+    }
+
+    document.getElementById('sessSub').textContent = ROUTINE_NAME[timer.routineType] + ' · Esercizio ' + (timer.exIdx+1) + '/' + timer.planArr.length;
+
+    const ex = currentExercise();
+    let pips = '';
+    for(let s=0;s<ex.sets;s++){
+      for(let r=0;r<ex.reps;r++){
+        let cls = 'set-pip';
+        if(s < timer.setIdx || (s===timer.setIdx && r < timer.repIdx)) cls += ' done';
+        else if(s===timer.setIdx && r===timer.repIdx && timer.phase!=='handSwitch') cls += ' now';
+        pips += `<div class="${cls}"></div>`;
+      }
+    }
+
+    document.getElementById('workBody').innerHTML = `
+      <div class="exercise-box">
+        <div class="ex-name">${displayEx.name}</div>
+        <div class="ex-desc">${displayEx.desc}</div>
+        <div class="ex-count">${countText}</div>
+      </div>
+      <div class="hand-switch">
+        <span class="seg ${displayHand==='DX'?'active':''}">DESTRA</span>
+        <span class="seg ${displayHand==='SX'?'active':''}">SINISTRA</span>
+      </div>
+      <div class="phase-tag ${pc}" id="phaseTag">${phaseLabelText}</div>
+      <div class="ring-wrap ${pc}" id="ringWrap">
+        <svg width="220" height="220" viewBox="0 0 230 230">
+          <circle cx="115" cy="115" r="105" fill="none" stroke="var(--steel-600)" stroke-width="12" />
+          <circle id="ringCircle" cx="115" cy="115" r="105" fill="none" stroke-width="12"
+            stroke-linecap="round" stroke-dasharray="660" stroke-dashoffset="0"
+            transform="rotate(-90 115 115)" />
+        </svg>
+        <div class="ring-num ${pc}" id="ringNum">${timer.secondsLeft}</div>
+      </div>
+      <div class="set-progress">${pips}</div>
+      <div class="paused-banner" id="pausedBanner" style="display:none;">IN PAUSA</div>
+      <div class="controls">
+        <button class="btn btn-ghost" id="pauseBtn">Pausa</button>
+        <button class="btn btn-ghost" id="skipBtn">Salta fase</button>
+      </div>
+    `;
+    document.getElementById('ringCircle').setAttribute('stroke', PHASE_COLOR_VAR[timer.phase]);
+    document.getElementById('pauseBtn').addEventListener('click', togglePause);
+    document.getElementById('skipBtn').addEventListener('click', ()=>{ if(!isPaused) advancePhase(); });
+  }
+
+  function startRingAnimation(durationSeconds){
+    const circle = document.getElementById('ringCircle');
+    if(!circle) return;
+    circle.style.transition = 'none';
+    circle.style.strokeDashoffset = '0';
+    void circle.getBoundingClientRect();
+    requestAnimationFrame(()=>{
+      circle.style.transition = 'stroke-dashoffset ' + durationSeconds + 's linear';
+      circle.style.strokeDashoffset = '660';
+    });
+  }
+
+  function togglePause(){
+    const pauseBtn = document.getElementById('pauseBtn');
+    const skipBtn = document.getElementById('skipBtn');
+    const banner = document.getElementById('pausedBanner');
+    const circle = document.getElementById('ringCircle');
+    if(!isPaused){
+      isPaused = true;
+      clearInterval(timer.interval);
+      if(circle) circle.style.transition = 'none';
+      if(pauseBtn) pauseBtn.textContent = 'Riprendi ▶';
+      if(skipBtn) skipBtn.disabled = true;
+      if(banner) banner.style.display = 'block';
+    } else {
+      isPaused = false;
+      if(circle){
+        circle.style.transition = 'stroke-dashoffset ' + timer.secondsLeft + 's linear';
+        circle.style.strokeDashoffset = '660';
+      }
+      timer.interval = setInterval(tick, 1000);
+      if(pauseBtn) pauseBtn.textContent = 'Pausa';
+      if(skipBtn) skipBtn.disabled = false;
+      if(banner) banner.style.display = 'none';
+    }
+  }
+
+  function goHome(){
+    clearInterval(timer.interval);
+    isPaused = false;
+    document.getElementById('sessionScreen').style.display = 'none';
+    document.getElementById('homeScreen').style.display = 'flex';
+    renderHome();
+  }
+
+  document.getElementById('backBtn').addEventListener('click', ()=>{
+    if(confirm("Uscire dalla sessione in corso? Il progresso di questa sessione andrà perso.")){ goHome(); }
+  });
+
+  (async function init(){ await loadLog(); renderHome(); })();
+
+})();
+</script>
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+  }
+</script>
+</body>
+</html>
